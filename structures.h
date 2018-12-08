@@ -1,6 +1,7 @@
 #ifndef STRUCTURES_H_   /* Include guard */
 #define STRUCTURES_H_
-
+#include <stdio.h>
+#include <stdlib.h>
 #define INST_Q_LEN (16)
 #define MEM_LEN		(4096)
 #define UNIT_TYPE_NUM		(6)
@@ -18,6 +19,11 @@ typedef enum op_code {
 	DIV,
 	HALT,
 }op_code_t;
+
+typedef enum queue_command {
+	POP = 0,
+	PEEk
+} queue_command_t;
 
 typedef struct inst_struct{
 	int src_reg_1;
@@ -63,6 +69,10 @@ typedef struct instruction_queue{
 	int free_spots;
 }instruction_queue_t;
 
-// push pop pick (look at the next inst)
+bool queue_is_free(instruction_queue_t * q);
+int queue_push(instruction_queue_t * q, inst_struct_t * inst);
+inst_struct_t * queue_read(instruction_queue_t * q, queue_command_t q_cmd);
+void queue_print(instruction_queue_t * q);
+void inst_print(inst_struct_t * inst);
 
 #endif // STRUCTURES_H_

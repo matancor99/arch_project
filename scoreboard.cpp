@@ -1,9 +1,7 @@
 #include "scoreboard.h"
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
-int memory[MEM_LEN];
 
+int memory[MEM_LEN];
+int program_counter = 0;
 // Globals initilazation
 int nr_units_array[UNIT_TYPE_NUM];
 int delays_array[UNIT_TYPE_NUM];
@@ -48,7 +46,7 @@ int init_memory(const char * memin_path)
 op_code_t get_unit_type_from_cfg_line(char * line)
 {
 	char * unit_name = strtok(line, "_");
-	printf("%s\n", unit_name);
+	//printf("%s\n", unit_name);
 	for (int i = 0; unit_name[i] != '\0'; i++)
 	{
 		unit_name[i] = tolower(unit_name[i]);
@@ -95,7 +93,7 @@ int init_arch_spec(const char * cfg_path)
 		int cfg_value = 0;
 		while (fscanf(cfg_file, "%s = %d\n", cfg_name, &cfg_value) != EOF)
 		{
-			printf("%s %d\n", cfg_name, cfg_value);
+			//printf("%s %d\n", cfg_name, cfg_value);
 			op_code_t opcode = get_unit_type_from_cfg_line(cfg_name);
 			if (line_num < UNIT_TYPE_NUM)
 			{ // we are reading the FUs amounts
@@ -203,4 +201,30 @@ int init_func(const char * cfg_path, const char * memin_path, const char * memou
 	init_instruction_queue(&inst_queue_curr);
 	init_instruction_queue(&inst_queue_next);
 	return 1;
+}
+
+inst_struct_t decode_inst(unsigned int hex_inst)
+{
+	inst_struct_t decoded_inst;
+	decoded_inst.immidiate	= hex_inst			& 0xFFF;
+	decoded_inst.src_reg_1	= (hex_inst >> 12)	& 0xF;
+	decoded_inst.src_reg_2	= (hex_inst >> 16)	& 0xF;
+	decoded_inst.dest_reg	= (hex_inst >> 20)	& 0xF;
+	decoded_inst.op_code	= op_code_t((hex_inst >> 24) & 0xF);
+	return decoded_inst;
+}
+
+int fetch()
+{
+	if (queue_is_free(&inst_queue_curr))
+	{ // there's a free spot in the queue so we can fetch
+		inst_struct_t inst = decode_inst(memory[program_counter]);
+		queue_push(&inst_queue_curr, &inst);
+		program_counter++;
+		queue_print(&inst_queue_curr);
+	}
+	else
+	{
+		return 0;
+	}
 }

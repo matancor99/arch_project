@@ -3,6 +3,8 @@
 #define SCOREBOARD_H_
 //#include "scoreboard.cpp"
 #include <stdio.h>
+#include <string.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include "structures.h"
 
@@ -17,5 +19,6 @@ int init_fu(functional_unit * fu, op_code_t unit_type, int unit_index);
 bool is_trace(functional_unit * fu);
 int init_instruction_queue(instruction_queue_t * inst_q);
 int init_func(const char * cfg_path, const char * memin_path, const char * memout_path, const char * regout_path, const char * traceinst_path, const char * traceunit_path);
-
+inst_struct_t decode_inst(unsigned int hex_inst);
+int fetch();
 #endif // SCOREBOARD_H_
