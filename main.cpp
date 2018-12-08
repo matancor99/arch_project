@@ -16,6 +16,12 @@ int is_end_program() {
 
 
 int main(int argc, char * argv[]) {
+	
+	if (argc != 7) {
+		printf("Usage : sym.exe cfg.txt memin.txt memout.txt regout.txt traceinst.txt traceunit.txt \n");
+		return -1;
+	}
+
 	for (int i = 0; i < argc; i++)
 	{
 		printf("argv[%d] = %s\n", i, argv[i]);
