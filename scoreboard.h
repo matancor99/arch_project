@@ -19,6 +19,14 @@ int init_fu(functional_unit * fu, op_code_t unit_type, int unit_index);
 bool is_trace(functional_unit * fu);
 int init_instruction_queue(instruction_queue_t * inst_q);
 int init_func(const char * cfg_path, const char * memin_path, const char * memout_path, const char * regout_path, const char * traceinst_path, const char * traceunit_path);
-inst_struct_t decode_inst(unsigned int hex_inst);
+inst_struct_t decode_inst(unsigned int hex_inst, int pc);
 int fetch();
+int issue();
+bool read_operands_for_fu(int fu_num);
+int read_operands();
+float exec_op(float v1, float v2, int imm, op_code_t opcode);
+int execute();
+int write_back();
+int sample_state();
+
 #endif // SCOREBOARD_H_

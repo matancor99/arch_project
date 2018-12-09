@@ -28,14 +28,14 @@ int main(int argc, char * argv[]) {
 	const char * traceunit_path = argv[6];
 	init_func(cfg_path, memin_path, memout_path, regout_path, traceinst_path, traceunit_path);
 
-	for(int i = 0; i<5; i++)
-	{ // TODO - need to handle HALT and end of execution
-	//	backup_all_important_structs();  // copy next to curr
+	for(int i = 0; i < 5; i++)
+	{ // TODO - need to handle HALT and end of execution		
 		fetch();
-	//	issue();
-	//	read_operants();
-	//	execute();
-	//	write_back();
+		issue();
+		read_operands();
+		execute();
+		write_back();
+		sample_state();  // copy next to curr
 	//	wrire_progress_to_output_files();
 	}
 	return 0;

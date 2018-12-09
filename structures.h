@@ -22,7 +22,7 @@ typedef enum op_code {
 
 typedef enum queue_command {
 	POP = 0,
-	PEEk
+	PEEK
 } queue_command_t;
 
 typedef struct inst_struct{
@@ -31,6 +31,7 @@ typedef struct inst_struct{
 	int dest_reg;
 	op_code_t op_code;
 	int immidiate;
+	int pc;
 }inst_struct_t;
 
 typedef struct trace_unit_cfg {
@@ -39,12 +40,13 @@ typedef struct trace_unit_cfg {
 } trace_unit_cfg_t;
 
 typedef struct functional_unit {
-	bool is_busy;
+	bool is_busy; // set when fu has an issued command
+	bool is_execute; // set when fu has started execution
+	bool is_writeback; // set when fu execution is done
 	op_code_t unit_type;
 	int unit_index;
 	bool is_trace;
-	unsigned int time_left;
-	bool is_waiting_for_writeback;
+	unsigned int time_left;	
 	int instruction_num;  // in memory
 	int Fi;
 	int Fj;
@@ -53,15 +55,16 @@ typedef struct functional_unit {
 	struct functional_unit * Qk;
 	bool Rj;
 	bool Rk;	
+	int immediate;
+	float wb_val;
 }functional_unit_t;
 
 typedef struct register_struct {
 	float value;
 	bool is_ready;
-	int func_unit_num;
+	functional_unit_t * fu;
 }register_struct_t;
 
-// Need to implement Q functionality
 typedef struct instruction_queue{
 	inst_struct_t inst_array[INST_Q_LEN];
 	int read_ptr;
