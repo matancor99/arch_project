@@ -28,8 +28,9 @@ int main(int argc, char * argv[]) {
 	const char * traceunit_path = argv[6];
 	init_func(cfg_path, memin_path, memout_path, regout_path, traceinst_path, traceunit_path);
 
-	for(int i = 0; i < 5; i++)
+	for(int i = 0; i < 20; i++)
 	{ // TODO - need to handle HALT and end of execution		
+		printf("cycle = %d\n", i);
 		fetch();
 		issue();
 		read_operands();

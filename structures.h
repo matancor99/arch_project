@@ -26,6 +26,7 @@ typedef enum queue_command {
 } queue_command_t;
 
 typedef struct inst_struct{
+	int instruction;
 	int src_reg_1;
 	int src_reg_2;
 	int dest_reg;
@@ -57,6 +58,11 @@ typedef struct functional_unit {
 	bool Rk;	
 	int immediate;
 	float wb_val;
+	int instruction;
+	int cycle_issued;
+	int cycle_read_operands;
+	int cycle_execute_end;
+	int cycle_write_result;
 }functional_unit_t;
 
 typedef struct register_struct {
@@ -72,10 +78,11 @@ typedef struct instruction_queue{
 	int free_spots;
 }instruction_queue_t;
 
+bool queue_is_empty(instruction_queue_t * q);
 bool queue_is_free(instruction_queue_t * q);
 int queue_push(instruction_queue_t * q, inst_struct_t * inst);
 inst_struct_t * queue_read(instruction_queue_t * q, queue_command_t q_cmd);
 void queue_print(instruction_queue_t * q);
 void inst_print(inst_struct_t * inst);
-
+void fu_print(functional_unit_t * fu);
 #endif // STRUCTURES_H_

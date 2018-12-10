@@ -2,6 +2,8 @@
 
 int memory[MEM_LEN] = { 0 };
 int program_counter = 0;
+int clock = 0; //system cycle count
+bool is_halt = false; // when we read halt command we should no longer fetch
 // Globals initilazation
 int nr_units_array[UNIT_TYPE_NUM];
 int delays_array[UNIT_TYPE_NUM];
@@ -102,7 +104,7 @@ int init_arch_spec(const char * cfg_path)
 			}
 			else if (line_num >= UNIT_TYPE_NUM && line_num < 2 * UNIT_TYPE_NUM)
 			{ // we are reading the FUs delays
-				delays_array[opcode] = cfg_value;
+				delays_array[opcode] = cfg_value - 2; // TODO - figure out execution time
 			}
 			if (line_num == 2 * UNIT_TYPE_NUM - 1)
 			{ // the next line is the trace_unit,
@@ -217,6 +219,7 @@ inst_struct_t decode_inst(unsigned int hex_inst, int pc)
 	decoded_inst.dest_reg	= (hex_inst >> 20)	& 0xF;
 	decoded_inst.op_code	= op_code_t((hex_inst >> 24) & 0xF);
 	decoded_inst.pc = pc;
+	decoded_inst.instruction = hex_inst;
 	return decoded_inst;
 }
 
@@ -225,9 +228,14 @@ int fetch()
 	if (queue_is_free(&inst_queue_curr))
 	{ // there's a free spot in the queue so we can fetch
 		inst_struct_t inst = decode_inst(memory[program_counter], program_counter);
-		queue_push(&inst_queue_curr, &inst);
+		if (inst.op_code == HALT)
+		{
+			is_halt = true;
+			return 0;
+		}
+		queue_push(&inst_queue_next, &inst);
 		program_counter++;
-		queue_print(&inst_queue_curr);
+		queue_print(&inst_queue_next);
 	}
 	else
 	{
@@ -238,18 +246,25 @@ int fetch()
 
 int issue()
 {
+	if (queue_is_empty(&inst_queue_curr))
+	{ // no instruction left to issue
+		return 0;
+	}
 	inst_struct_t * curr_inst = queue_read(&inst_queue_curr, PEEK);
 	for (int i = 0; i < num_fus; i++)
 	{
 		if (fu_array_curr[i]->unit_type == curr_inst->op_code &&
 			!fu_array_curr[i]->is_busy)
-		{
+		{ // we can issue the instruction
+			queue_read(&inst_queue_next, POP);
 			fu_array_next[i]->is_busy = true;
 			fu_array_next[i]->instruction_num = curr_inst->pc;
 			fu_array_next[i]->Fi = curr_inst->dest_reg;
 			fu_array_next[i]->Fj = curr_inst->src_reg_1;
 			fu_array_next[i]->Fk = curr_inst->src_reg_2;
 			fu_array_next[i]->immediate = curr_inst->immidiate;
+			fu_array_next[i]->instruction = curr_inst->instruction;
+			fu_array_next[i]->cycle_issued = clock;
 			return 1;
 		}
 	}
@@ -320,7 +335,8 @@ int read_operands()
 		{ // this means our FU is in ReadOperand stage
 			if (read_operands_for_fu(i))
 			{
-				fu_array_next[i]->is_execute = true;				
+				fu_array_next[i]->is_execute = true;		
+				fu_array_next[i]->cycle_read_operands = clock;
 			}
 		}
 	}
@@ -352,10 +368,11 @@ int execute()
 		{
 			functional_unit_t * fu_curr = fu_array_curr[i];
 			if (fu_array_curr[i]->time_left == 0)
-			{
+			{ // execution ended!
 				fu_array_curr[i]->wb_val = exec_op(reg_file_curr[fu_curr->Fj].value, reg_file_curr[fu_curr->Fk].value, fu_curr->immediate, fu_curr->unit_type);
 				fu_array_next[i]->is_execute = false;
 				fu_array_next[i]->is_writeback = true;
+				fu_array_next[i]->cycle_execute_end = clock;
 
 			}
 			else
@@ -401,7 +418,10 @@ int write_back()
 				{ // Writeback
 					reg_file_next[dest_reg].is_ready = true;
 					reg_file_next[dest_reg].value = fu_array_curr[i]->wb_val;
+					fu_array_curr[i]->cycle_write_result = clock;
+					fu_print(fu_array_curr[i]);
 					init_fu(fu_array_next[i], fu_array_next[i]->unit_type, fu_array_next[i]->unit_index);
+					break;
 				}
 
 			}
@@ -418,5 +438,6 @@ int sample_state()
 	}
 	memcpy(reg_file_curr, reg_file_next, sizeof(reg_file_curr));
 	memcpy(&inst_queue_curr, &inst_queue_next, sizeof(inst_queue_curr));
+	clock++;
 	return 1;
 }
