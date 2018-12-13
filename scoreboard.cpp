@@ -244,6 +244,55 @@ int fetch()
 }
 
 
+
+void update_fu(int fu_num, inst_struct_t * curr_inst)
+{
+	if (fu_array_curr[fu_num]->unit_type == ST)
+	{ // STORE
+		if (reg_file_curr[fu_array_curr[fu_num]->Fj].is_ready)
+		{
+			fu_array_next[fu_num]->Rj = true;
+		}
+		else
+		{
+			fu_array_next[fu_num]->Rj = false;
+			fu_array_next[fu_num]->Qj = reg_file_curr[fu_array_curr[fu_num]->Fj].fu;
+		}
+	}
+	else if (fu_array_curr[fu_num]->unit_type == LD)
+	{ // LOAD
+		reg_file_next[curr_inst->dest_reg].is_ready = false;
+		reg_file_next[curr_inst->dest_reg].fu = fu_array_curr[fu_num];
+	}
+	else
+	{ // ARITHMETIC
+		// checking if Fj is ready or not
+		if (reg_file_curr[fu_array_curr[fu_num]->Fj].is_ready)
+		{
+			fu_array_next[fu_num]->Rj = true;
+		}
+		else
+		{
+			fu_array_next[fu_num]->Rj = false;
+			fu_array_next[fu_num]->Qj = reg_file_curr[fu_array_curr[fu_num]->Fj].fu;
+		}
+		// checking if Fk is ready or not
+		if (reg_file_curr[fu_array_curr[fu_num]->Fk].is_ready)
+		{
+			fu_array_next[fu_num]->Rk = true;
+		}
+		else
+		{
+			fu_array_next[fu_num]->Rk = false;
+			fu_array_next[fu_num]->Qk = reg_file_curr[fu_array_curr[fu_num]->Fk].fu;
+		}
+		// if both source registers are ready - we can start execution
+		reg_file_next[curr_inst->dest_reg].is_ready = false;
+		reg_file_next[curr_inst->dest_reg].fu = fu_array_curr[fu_num];
+	}
+	return;
+}
+
 int issue()
 {
 	if (queue_is_empty(&inst_queue_curr))
@@ -265,6 +314,7 @@ int issue()
 			fu_array_next[i]->immediate = curr_inst->immidiate;
 			fu_array_next[i]->instruction = curr_inst->instruction;
 			fu_array_next[i]->cycle_issued = clock;
+			update_fu(i, curr_inst);
 			return 1;
 		}
 	}
@@ -274,57 +324,19 @@ int issue()
 bool read_operands_for_fu(int fu_num)
 {
 	if (fu_array_curr[fu_num]->unit_type == ST)
-	{ // STORE
-		if (reg_file_curr[fu_array_curr[fu_num]->Fj].is_ready)
-		{
-			fu_array_next[fu_num]->Rj = true;
-			return true;
-		}
-		else
-		{
-			fu_array_next[fu_num]->Rj = false;
-			fu_array_next[fu_num]->Qj = reg_file_curr[fu_array_curr[fu_num]->Fj].fu;
-			return false;
-		}
+	{ // STORE 
+		return reg_file_curr[fu_array_curr[fu_num]->Fj].is_ready && reg_file_curr[fu_array_curr[fu_num]->Fj].fu != fu_array_curr[fu_num];
 	}
 	else if (fu_array_curr[fu_num]->unit_type == LD)
 	{ // LOAD
-		reg_file_next[fu_array_next[fu_num]->Fi].is_ready = false;
-		reg_file_next[fu_array_next[fu_num]->Fi].fu = fu_array_curr[fu_num];
 		return true;
 	}
 	else
 	{ // ARITHMETIC
-		// checking if Fj is ready or not
-		if (reg_file_curr[fu_array_curr[fu_num]->Fj].is_ready)
-		{
-			fu_array_next[fu_num]->Rj = true;
-		}
-		else
-		{
-			fu_array_next[fu_num]->Rj = false;
-			fu_array_next[fu_num]->Qj = reg_file_curr[fu_array_curr[fu_num]->Fj].fu;
-			return false;
-		}
-		// checking if Fk is ready or not
-		if (reg_file_curr[fu_array_curr[fu_num]->Fk].is_ready)
-		{
-			fu_array_next[fu_num]->Rk = true;
-		}
-		else
-		{
-			fu_array_next[fu_num]->Rk = false;
-			fu_array_next[fu_num]->Qk = reg_file_curr[fu_array_curr[fu_num]->Fk].fu;
-			return false;
-		}
-		// if both source registers are ready - we can start execution
-		reg_file_next[fu_array_curr[fu_num]->Fi].is_ready = false;
-		reg_file_next[fu_array_curr[fu_num]->Fi].fu = fu_array_curr[fu_num];
-
-		return true;
-	}
-	
-	
+		// checking if Fj and Fk is ready or not and that the FU is not starving itself
+		return (reg_file_curr[fu_array_curr[fu_num]->Fj].is_ready || reg_file_curr[fu_array_curr[fu_num]->Fj].fu == fu_array_curr[fu_num]) && 
+			   (reg_file_curr[fu_array_curr[fu_num]->Fk].is_ready || reg_file_curr[fu_array_curr[fu_num]->Fk].fu == fu_array_curr[fu_num]);
+	}	
 }
 
 int read_operands()
