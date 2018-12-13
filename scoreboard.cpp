@@ -325,7 +325,7 @@ bool read_operands_for_fu(int fu_num)
 {
 	if (fu_array_curr[fu_num]->unit_type == ST)
 	{ // STORE 
-		return reg_file_curr[fu_array_curr[fu_num]->Fj].is_ready && reg_file_curr[fu_array_curr[fu_num]->Fj].fu != fu_array_curr[fu_num];
+		return reg_file_curr[fu_array_curr[fu_num]->Fj].is_ready || reg_file_curr[fu_array_curr[fu_num]->Fj].fu == fu_array_curr[fu_num];
 	}
 	else if (fu_array_curr[fu_num]->unit_type == LD)
 	{ // LOAD
