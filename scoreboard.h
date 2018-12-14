@@ -28,5 +28,6 @@ float exec_op(float v1, float v2, int imm, op_code_t opcode);
 int execute();
 int write_back();
 int sample_state();
-
+void print_regout(bool is_dbg);
+void print_memout(bool is_dbg);
 #endif // SCOREBOARD_H_

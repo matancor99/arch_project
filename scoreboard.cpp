@@ -1,6 +1,13 @@
 #include "scoreboard.h"
+//output file names
+//char * memout_file_name = "C:\\Users\\kfir\\Documents\\ee_masters\\winter19\\comp_archs\\project\\proj_output\\memout.txt";
+//char * regout_file_name = "C:\\Users\\kfir\\Documents\\ee_masters\\winter19\\comp_archs\\project\\proj_output\\regout.txt";
+char * memout_file_name = "memout.txt";
+char * regout_file_name = "regout.txt";
 
 int memory[MEM_LEN] = { 0 };
+int used_mem_len; // number of rows actually used in memory.
+				  // will make printing the memout easier by only printing used lines
 int program_counter = 0;
 int clock = 0; //system cycle count
 bool is_halt = false; // when we read halt command we should no longer fetch
@@ -34,15 +41,16 @@ int init_registers(register_struct_t * reg_array)
 
 int init_memory(const char * memin_path)
 {
+	int row_num = 0;
 	FILE * mem_file = fopen(memin_path, "r");
 	if (mem_file)
 	{
-		int row_num = 0;
 		while (fscanf(mem_file, "%x", &memory[row_num]) == 1)
 		{
 			row_num++;
 		}
 	}
+	used_mem_len = row_num;
 	return 1;
 }
 
@@ -235,7 +243,7 @@ int fetch()
 		}
 		queue_push(&inst_queue_next, &inst);
 		program_counter++;
-		queue_print(&inst_queue_next);
+		//queue_print(&inst_queue_next);
 	}
 	else
 	{
@@ -357,15 +365,17 @@ int read_operands()
 
 float exec_op(float v1, float v2, int imm, op_code_t opcode)
 {
+	printf("exec_op: v1 = %f, v2 = %f, imm = %d, opcode = %d\n", v1, v2, imm, opcode);
 	switch (opcode)
 	{
 	case ADD: return v1 + v2;
 	case SUB: return v1 - v2;
 	case MULT: return v1 * v2;
 	case DIV: return v1 / v2;
-	case LD: float f; f = (float)memory[imm];
+	case LD: float f; f = *((float*)&memory[imm]);
+		printf("f = %f\n", f);
 			 return f;
-	case ST: memory[imm] = (int)v1;
+	case ST: memory[imm] = *((int*)&v1);
 			 return 0.0;
 	default: printf("ERROR in exec_op - invalid command!\n");
 			 return 1.0;
@@ -382,6 +392,7 @@ int execute()
 			functional_unit_t * fu_curr = fu_array_curr[i];
 			if (fu_array_curr[i]->time_left == 0)
 			{ // execution ended!
+				//printf("execute: type: %d, val1 = %f, val2 = %f, imm = %d", reg_file_curr[fu_curr->unit_type], reg_file_curr[fu_curr->Fj].value, reg_file_curr[fu_curr->Fk].value, fu_curr->immediate);
 				fu_array_next[i]->wb_val = exec_op(reg_file_curr[fu_curr->Fj].value, reg_file_curr[fu_curr->Fk].value, fu_curr->immediate, fu_curr->unit_type);
 				fu_array_next[i]->is_execute = false;
 				fu_array_next[i]->is_writeback = true;
@@ -453,4 +464,67 @@ int sample_state()
 	memcpy(&inst_queue_curr, &inst_queue_next, sizeof(inst_queue_curr));
 	clock++;
 	return 1;
+}
+
+void print_regout(bool is_dbg)
+{
+	FILE * regout;
+	if (!is_dbg)
+	{
+		regout = fopen(regout_file_name, "wb");
+		if (!regout)
+		{
+			printf("print_regout file open error!\n");
+			return;
+		}
+	}	
+	for (int i = 0; i < REG_NUM; i++)
+	{
+		if (is_dbg)
+		{
+			printf("%f\n", reg_file_curr[i].value);
+		}
+		else
+		{
+			fwrite(&reg_file_curr[i].value, 1, sizeof(float), regout);
+			fputs("\n", regout);
+		}
+
+	}
+	if (!is_dbg)
+	{
+		fclose(regout);
+	}
+}
+
+void print_memout(bool is_dbg)
+{
+	FILE * memout;
+	if (!is_dbg)
+	{
+		memout = fopen(memout_file_name, "wb");
+		if (!memout)
+		{
+			printf("print_memout file open error!\n");
+			return;
+		}
+	}
+	for (int i = 0; i < used_mem_len; i++)
+	{
+		char mem_line[12];
+		sprintf(mem_line, "%08x\n", memory[i]);
+		if (is_dbg)
+		{
+			printf(mem_line);
+		}
+		else
+		{
+			fputs(mem_line, memout);
+		}
+	}
+	if (!is_dbg)
+	{
+		fclose(memout);
+
+	}
 }

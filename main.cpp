@@ -37,7 +37,10 @@ int main(int argc, char * argv[]) {
 		execute();
 		write_back();
 		sample_state();  // copy next to curr
+		print_regout(true);
 	//	wrire_progress_to_output_files();
 	}
+	print_regout(false);
+	print_memout(false);
 	return 0;
 }
