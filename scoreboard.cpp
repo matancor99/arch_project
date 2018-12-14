@@ -363,8 +363,9 @@ float exec_op(float v1, float v2, int imm, op_code_t opcode)
 	case SUB: return v1 - v2;
 	case MULT: return v1 * v2;
 	case DIV: return v1 / v2;
-	case LD: return memory[imm];
-	case ST: memory[imm] = v1;
+	case LD: float f; f = (float)memory[imm];
+			 return f;
+	case ST: memory[imm] = (int)v1;
 			 return 0.0;
 	default: printf("ERROR in exec_op - invalid command!\n");
 			 return 1.0;
@@ -381,7 +382,7 @@ int execute()
 			functional_unit_t * fu_curr = fu_array_curr[i];
 			if (fu_array_curr[i]->time_left == 0)
 			{ // execution ended!
-				fu_array_curr[i]->wb_val = exec_op(reg_file_curr[fu_curr->Fj].value, reg_file_curr[fu_curr->Fk].value, fu_curr->immediate, fu_curr->unit_type);
+				fu_array_next[i]->wb_val = exec_op(reg_file_curr[fu_curr->Fj].value, reg_file_curr[fu_curr->Fk].value, fu_curr->immediate, fu_curr->unit_type);
 				fu_array_next[i]->is_execute = false;
 				fu_array_next[i]->is_writeback = true;
 				fu_array_next[i]->cycle_execute_end = clock;
