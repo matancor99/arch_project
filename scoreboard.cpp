@@ -480,14 +480,15 @@ void print_regout(bool is_dbg)
 	}	
 	for (int i = 0; i < REG_NUM; i++)
 	{
+		char reg_line[40];
+		sprintf(reg_line, "%f\n", reg_file_curr[i].value);
 		if (is_dbg)
 		{
 			printf("%f\n", reg_file_curr[i].value);
 		}
 		else
-		{
-			fwrite(&reg_file_curr[i].value, 1, sizeof(float), regout);
-			fputs("\n", regout);
+		{			
+			fputs(reg_line, regout);
 		}
 
 	}
