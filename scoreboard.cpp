@@ -2,8 +2,8 @@
 //output file names
 //char * memout_file_name = "C:\\Users\\kfir\\Documents\\ee_masters\\winter19\\comp_archs\\project\\proj_output\\memout.txt";
 //char * regout_file_name = "C:\\Users\\kfir\\Documents\\ee_masters\\winter19\\comp_archs\\project\\proj_output\\regout.txt";
-char * memout_file_name = "memout.txt";
-char * regout_file_name = "regout.txt";
+const char * memout_file_name = "memout.txt";
+const char * regout_file_name = "regout.txt";
 
 int memory[MEM_LEN] = { 0 };
 int used_mem_len; // number of rows actually used in memory.
@@ -468,7 +468,7 @@ int sample_state()
 
 void print_regout(bool is_dbg)
 {
-	FILE * regout;
+	FILE * regout = NULL;
 	if (!is_dbg)
 	{
 		regout = fopen(regout_file_name, "wb");
@@ -486,8 +486,9 @@ void print_regout(bool is_dbg)
 		}
 		else
 		{
-			fwrite(&reg_file_curr[i].value, 1, sizeof(float), regout);
-			fputs("\n", regout);
+			char reg_val[12];
+			sprintf(reg_val, "%f\n", reg_file_curr[i].value);
+			fputs(reg_val, regout);
 		}
 
 	}
@@ -499,7 +500,7 @@ void print_regout(bool is_dbg)
 
 void print_memout(bool is_dbg)
 {
-	FILE * memout;
+	FILE * memout = NULL;
 	if (!is_dbg)
 	{
 		memout = fopen(memout_file_name, "wb");

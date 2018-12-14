@@ -67,6 +67,4 @@ void fu_print(functional_unit_t * fu)
 	printf("cycle_read_operands: %d\t", fu->cycle_read_operands);
 	printf("cycle_execute_end: %d\t", fu->cycle_execute_end);
 	printf("cycle_write_result: %d\n", fu->cycle_write_result);
-
-
 }
