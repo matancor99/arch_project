@@ -30,4 +30,7 @@ int write_back();
 int sample_state();
 void print_regout(bool is_dbg);
 void print_memout(bool is_dbg);
+void traceunit();
+const char * opcode_num_to_string(int opcode_num);
+void init_files();
 #endif // SCOREBOARD_H_

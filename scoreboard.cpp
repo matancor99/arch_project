@@ -4,6 +4,8 @@
 //char * regout_file_name = "C:\\Users\\kfir\\Documents\\ee_masters\\winter19\\comp_archs\\project\\proj_output\\regout.txt";
 const char * memout_file_name = "memout.txt";
 const char * regout_file_name = "regout.txt";
+const char * traceunit_file_name = "traceunit.txt";
+
 
 int memory[MEM_LEN] = { 0 };
 int used_mem_len; // number of rows actually used in memory.
@@ -205,8 +207,18 @@ int init_instruction_queue(instruction_queue_t * inst_q)
 	return 1;
 }
 
+void init_files()
+{
+	FILE * file_traceunit = fopen(traceunit_file_name, "wb");
+	if (file_traceunit)
+	{
+		fclose(file_traceunit);
+	}
+}
+
 int init_func(const char * cfg_path, const char * memin_path, const char * memout_path, const char * regout_path, const char * traceinst_path, const char * traceunit_path)
 {
+	init_files();
 	init_registers(reg_file_curr);
 	init_registers(reg_file_next);
 	init_memory(memin_path);
@@ -222,8 +234,8 @@ inst_struct_t decode_inst(unsigned int hex_inst, int pc)
 {
 	inst_struct_t decoded_inst;
 	decoded_inst.immidiate	= hex_inst			& 0xFFF;
-	decoded_inst.src_reg_1	= (hex_inst >> 12)	& 0xF;
-	decoded_inst.src_reg_2	= (hex_inst >> 16)	& 0xF;
+	decoded_inst.src_reg_2	= (hex_inst >> 12)	& 0xF;
+	decoded_inst.src_reg_1	= (hex_inst >> 16)	& 0xF;
 	decoded_inst.dest_reg	= (hex_inst >> 20)	& 0xF;
 	decoded_inst.op_code	= op_code_t((hex_inst >> 24) & 0xF);
 	decoded_inst.pc = pc;
@@ -527,5 +539,109 @@ void print_memout(bool is_dbg)
 	{
 		fclose(memout);
 
+	}
+}
+
+
+void traceunit()
+{
+	for (int i = 0; i < num_fus; i++)
+	{
+		if (fu_array_curr[i]->is_trace && fu_array_curr[i]->is_busy)
+		{
+			FILE * file_traceunit = fopen(traceunit_file_name, "a");
+			if (file_traceunit)
+			{
+				char traceunit_line[MAX_LINE_LEN];
+				char Fi[MAX_LINE_LEN];
+				char Fj[MAX_LINE_LEN];
+				char Fk[MAX_LINE_LEN];
+				char Qj[MAX_LINE_LEN];
+				char Qk[MAX_LINE_LEN];
+				char Rj[MAX_LINE_LEN];
+				char Rk[MAX_LINE_LEN];
+				int cycle = clock;
+				char unit[MAX_LINE_LEN];
+				sprintf(unit, "%s%d", opcode_num_to_string(fu_array_next[i]->unit_type), fu_array_next[i]->unit_index);
+				switch (fu_array_next[i]->unit_type)
+				{
+				case MULT:
+				case DIV:
+				case SUB:
+				case ADD:
+					sprintf(Fi, "F%d", fu_array_next[i]->Fi);
+					sprintf(Fj, "F%d", fu_array_next[i]->Fj);
+					sprintf(Fk, "F%d", fu_array_next[i]->Fk);
+					if (!fu_array_next[i]->Rj)
+					{
+						sprintf(Rj, "No");
+						sprintf(Qj, "%s%d", opcode_num_to_string(fu_array_next[i]->Qj->unit_type), fu_array_next[i]->Qj->unit_index);
+					}
+					else
+					{
+						sprintf(Rj, "Yes");
+						sprintf(Qj, "-");
+					}
+					if (!fu_array_next[i]->Rk)
+					{
+						sprintf(Rk, "No");
+						sprintf(Qk, "%s%d", opcode_num_to_string(fu_array_next[i]->Qk->unit_type), fu_array_next[i]->Qk->unit_index);
+					}
+					else
+					{
+						sprintf(Rk, "Yes");
+						sprintf(Qk, "-");
+					}
+					break;
+				case LD:
+					sprintf(Fi, "F%d", fu_array_next[i]->Fi);
+					sprintf(Fj, "-");
+					sprintf(Fk, "-");
+					sprintf(Rj, "Yes");
+					sprintf(Qj, "-");
+					sprintf(Rk, "Yes");
+					sprintf(Qk, "-");
+					break;
+				case ST:
+					sprintf(Fi, "-");
+					sprintf(Fj, "-");
+					sprintf(Fk, "F%d", fu_array_next[i]->Fk);
+					sprintf(Rj, "Yes");
+					sprintf(Qj, "-");
+					if (!fu_array_next[i]->Rk)
+					{
+						sprintf(Rk, "No");
+						sprintf(Qk, "%s%d", opcode_num_to_string(fu_array_next[i]->Qk->unit_type), fu_array_next[i]->Qk->unit_index);
+					}
+					else
+					{
+						sprintf(Rk, "Yes");
+						sprintf(Qk, "-");
+					}
+					break;
+				default:
+					break;
+				}
+				fprintf(file_traceunit, "%d %s %s %s %s %s %s %s %s\n", cycle, unit, Fi, Fj, Fk, Qj, Qk, Rj, Rk);			
+				fclose(file_traceunit);
+				return;
+			}
+		}
+	}
+}
+
+
+const char * opcode_num_to_string(int opcode_num)
+{
+	switch (opcode_num)
+	{
+	case LD: return "LD";
+	case ST: return "ST";
+	case ADD: return "ADD";
+	case SUB: return "SUB";
+	case MULT: return "MULT";
+	case DIV: return "DIV";
+	case HALT: return "HALT";
+	default: return "ERROR";
 	}
 }
