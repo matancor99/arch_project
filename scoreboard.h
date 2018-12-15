@@ -34,4 +34,8 @@ void traceunit();
 const char * opcode_num_to_string(int opcode_num);
 void init_files();
 int update_waiting_fus(int dest_reg);
+void traceinst(int pc, trace_inst_phase_t phase);
+void set_traceinst_fu(int pc, op_code_t fu_type, int fu_idx);
+void init_traceinst();
+void print_traceinst(bool is_dbg);
 #endif // SCOREBOARD_H_

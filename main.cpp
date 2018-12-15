@@ -43,5 +43,6 @@ int main(int argc, char * argv[]) {
 	}
 	print_regout(false);
 	print_memout(false);
+	print_traceinst(false);
 	return 0;
 }

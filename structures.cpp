@@ -63,8 +63,8 @@ void fu_print(functional_unit_t * fu)
 	printf("instruction: %x\t", fu->instruction);
 	printf("pc: %d\t", fu->instruction_num);
 	printf("unit_name: %d %d\t", fu->unit_type, fu->unit_index);
-	printf("cycle_issued: %d\t", fu->cycle_issued);
+	/*printf("cycle_issued: %d\t", fu->cycle_issued);
 	printf("cycle_read_operands: %d\t", fu->cycle_read_operands);
 	printf("cycle_execute_end: %d\t", fu->cycle_execute_end);
-	printf("cycle_write_result: %d\n", fu->cycle_write_result);
+	printf("cycle_write_result: %d\n", fu->cycle_write_result);*/
 }

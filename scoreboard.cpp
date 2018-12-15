@@ -7,6 +7,10 @@ const char * regout_file_name = "regout.txt";
 const char * traceunit_file_name = "traceunit.txt";
 const char * traceinst_file_name = "traceinst.txt";
 
+
+traceinst_t * traceinst_arr;
+int num_insts;
+
 int memory[MEM_LEN] = { 0 };
 int used_mem_len; // number of rows actually used in memory.
 				  // will make printing the memout easier by only printing used lines
@@ -216,12 +220,42 @@ void init_files()
 	}
 }
 
+void init_traceinst()
+{
+	// find number of commands in program by reading memory until HALT
+	bool is_reached_halt = false;
+	int num_cmds = 0;
+	while (!is_reached_halt)
+	{
+		if (decode_inst(memory[num_cmds], num_cmds).op_code != HALT)
+		{
+			num_cmds++;
+		}
+		else
+		{
+			is_reached_halt = true;
+		}
+	}
+	num_insts = num_cmds;
+	traceinst_arr = (traceinst_t *)malloc(sizeof(traceinst_t) * num_cmds);
+	for (int i = 0; i < num_cmds; i++)
+	{
+		traceinst_arr[i].issued = 0;
+		traceinst_arr[i].read_operands = 0;
+		traceinst_arr[i].exec = 0;
+		traceinst_arr[i].wb = 0;
+		traceinst_arr[i].pc = i;
+		traceinst_arr[i].command_hex = memory[i];
+	}
+}
+
 int init_func(const char * cfg_path, const char * memin_path, const char * memout_path, const char * regout_path, const char * traceinst_path, const char * traceunit_path)
 {
 	init_files();
 	init_registers(reg_file_curr);
 	init_registers(reg_file_next);
 	init_memory(memin_path);
+	init_traceinst();
 	init_arch_spec(cfg_path);
 	init_functional_units(&fu_array_curr);
 	init_functional_units(&fu_array_next);
@@ -333,12 +367,24 @@ int issue()
 			fu_array_next[i]->Fk = curr_inst->src_reg_2;
 			fu_array_next[i]->immediate = curr_inst->immidiate;
 			fu_array_next[i]->instruction = curr_inst->instruction;
-			fu_array_next[i]->cycle_issued = clock;
 			update_fu(i, curr_inst);
+			traceinst(curr_inst->pc, ISSUE);
 			return 1;
 		}
 	}
 	return 0;
+}
+
+void traceinst(int pc, trace_inst_phase_t phase)
+{
+	switch (phase)
+	{
+	case ISSUE: traceinst_arr[pc].issued = clock;
+	case READ_OPERANDS: traceinst_arr[pc].read_operands = clock;
+	case EXEC: traceinst_arr[pc].exec = clock;
+	case WB: traceinst_arr[pc].wb = clock;
+	default: printf("traceinst ERROR!\n");
+	}	
 }
 
 bool read_operands_for_fu(int fu_num)
@@ -389,7 +435,7 @@ int read_operands()
 				fu_array_next[i]->Qj = NULL;
 				fu_array_next[i]->Qk = NULL;
 				fu_array_next[i]->is_execute = true;		
-				fu_array_next[i]->cycle_read_operands = clock;
+				traceinst(fu_array_curr[i]->instruction_num, READ_OPERANDS);
 			}
 		}
 	}
@@ -429,8 +475,8 @@ int execute()
 				fu_array_next[i]->wb_val = exec_op(reg_file_curr[fu_curr->Fj].value, reg_file_curr[fu_curr->Fk].value, fu_curr->immediate, fu_curr->unit_type);
 				fu_array_next[i]->is_execute = false;
 				fu_array_next[i]->is_writeback = true;
-				fu_array_next[i]->cycle_execute_end = clock;
-
+				traceinst(fu_curr->instruction_num, EXEC);
+				set_traceinst_fu(fu_curr->instruction_num, fu_curr->unit_type, fu_curr->unit_index);
 			}
 			else
 			{
@@ -495,8 +541,8 @@ int write_back()
 					reg_file_next[dest_reg].is_ready = true;
 					reg_file_next[dest_reg].value = fu_array_curr[i]->wb_val;
 					update_waiting_fus(dest_reg);
-					fu_array_curr[i]->cycle_write_result = clock;
-					fu_print(fu_array_curr[i]);
+					traceinst(fu_array_curr[i]->instruction_num, WB);
+					//fu_print(fu_array_curr[i]);
 					init_fu(fu_array_next[i], fu_array_next[i]->unit_type, fu_array_next[i]->unit_index);
 					break;
 				}
@@ -703,4 +749,32 @@ const char * opcode_num_to_string(int opcode_num)
 	case HALT: return "HALT";
 	default: return "ERROR";
 	}
+}
+
+void print_traceinst(bool is_dbg)
+{
+	FILE * file_traceinst = fopen(traceinst_file_name, "wb");
+	if (!file_traceinst)
+	{
+		return;
+	}
+	for (int i = 0; i < num_insts; i++)
+	{
+		fprintf(file_traceinst, "%08x %d %s%d %d %d %d %d\n",
+			traceinst_arr[i].command_hex,
+			traceinst_arr[i].pc,
+			opcode_num_to_string(traceinst_arr[i].fu_type),
+			traceinst_arr[i].fu_idx,
+			traceinst_arr[i].issued,
+			traceinst_arr[i].read_operands,
+			traceinst_arr[i].exec,
+			traceinst_arr[i].wb);
+	}
+	fclose(file_traceinst);
+}
+
+void set_traceinst_fu(int pc, op_code_t fu_type, int fu_idx)
+{
+	traceinst_arr[pc].fu_type = fu_type;
+	traceinst_arr[pc].fu_idx = fu_idx;
 }

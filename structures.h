@@ -8,7 +8,12 @@
 #define REG_NUM		(16)
 #define MAX_LINE_LEN (1000)
 
-
+typedef enum trace_inst_phase {
+	ISSUE = 0,
+	READ_OPERANDS,
+	EXEC,
+	WB
+} trace_inst_phase_t;
 
 typedef enum op_code {
 	LD = 0,
@@ -24,6 +29,19 @@ typedef enum queue_command {
 	POP = 0,
 	PEEK
 } queue_command_t;
+
+
+typedef struct traceinst
+{
+	int command_hex;
+	int pc;
+	op_code_t fu_type;
+	int fu_idx;
+	int issued;
+	int read_operands;
+	int exec;
+	int wb;
+} traceinst_t;
 
 typedef struct inst_struct{
 	int instruction;
@@ -59,10 +77,7 @@ typedef struct functional_unit {
 	int immediate;
 	float wb_val;
 	int instruction;
-	int cycle_issued;
-	int cycle_read_operands;
-	int cycle_execute_end;
-	int cycle_write_result;
+
 }functional_unit_t;
 
 typedef struct register_struct {
