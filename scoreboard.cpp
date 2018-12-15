@@ -5,7 +5,7 @@
 const char * memout_file_name = "memout.txt";
 const char * regout_file_name = "regout.txt";
 const char * traceunit_file_name = "traceunit.txt";
-
+const char * traceinst_file_name = "traceinst.txt";
 
 int memory[MEM_LEN] = { 0 };
 int used_mem_len; // number of rows actually used in memory.
@@ -267,19 +267,19 @@ int fetch()
 
 void update_fu(int fu_num, inst_struct_t * curr_inst)
 {
-	if (fu_array_curr[fu_num]->unit_type == ST)
+	if (curr_inst->op_code == ST)
 	{ // STORE
-		if (reg_file_curr[fu_array_curr[fu_num]->Fj].is_ready)
+		if (reg_file_curr[curr_inst->src_reg_2].is_ready)
 		{
 			fu_array_next[fu_num]->Rj = true;
 		}
 		else
 		{
 			fu_array_next[fu_num]->Rj = false;
-			fu_array_next[fu_num]->Qj = reg_file_curr[fu_array_curr[fu_num]->Fj].fu;
+			fu_array_next[fu_num]->Qj = reg_file_curr[curr_inst->src_reg_2].fu;
 		}
 	}
-	else if (fu_array_curr[fu_num]->unit_type == LD)
+	else if (curr_inst->op_code == LD)
 	{ // LOAD
 		reg_file_next[curr_inst->dest_reg].is_ready = false;
 		reg_file_next[curr_inst->dest_reg].fu = fu_array_curr[fu_num];
@@ -287,24 +287,24 @@ void update_fu(int fu_num, inst_struct_t * curr_inst)
 	else
 	{ // ARITHMETIC
 		// checking if Fj is ready or not
-		if (reg_file_curr[fu_array_curr[fu_num]->Fj].is_ready)
+		if (reg_file_curr[curr_inst->src_reg_1].is_ready)
 		{
 			fu_array_next[fu_num]->Rj = true;
 		}
 		else
 		{
 			fu_array_next[fu_num]->Rj = false;
-			fu_array_next[fu_num]->Qj = reg_file_curr[fu_array_curr[fu_num]->Fj].fu;
+			fu_array_next[fu_num]->Qj = reg_file_curr[curr_inst->src_reg_1].fu;
 		}
 		// checking if Fk is ready or not
-		if (reg_file_curr[fu_array_curr[fu_num]->Fk].is_ready)
+		if (reg_file_curr[curr_inst->src_reg_2].is_ready)
 		{
 			fu_array_next[fu_num]->Rk = true;
 		}
 		else
 		{
 			fu_array_next[fu_num]->Rk = false;
-			fu_array_next[fu_num]->Qk = reg_file_curr[fu_array_curr[fu_num]->Fk].fu;
+			fu_array_next[fu_num]->Qk = reg_file_curr[curr_inst->src_reg_2].fu;
 		}
 		// if both source registers are ready - we can start execution
 		reg_file_next[curr_inst->dest_reg].is_ready = false;
@@ -345,7 +345,7 @@ bool read_operands_for_fu(int fu_num)
 {
 	if (fu_array_curr[fu_num]->unit_type == ST)
 	{ // STORE 
-		return reg_file_curr[fu_array_curr[fu_num]->Fj].is_ready || reg_file_curr[fu_array_curr[fu_num]->Fj].fu == fu_array_curr[fu_num];
+		return reg_file_curr[fu_array_curr[fu_num]->Fk].is_ready || reg_file_curr[fu_array_curr[fu_num]->Fk].fu == fu_array_curr[fu_num];
 	}
 	else if (fu_array_curr[fu_num]->unit_type == LD)
 	{ // LOAD
@@ -354,8 +354,25 @@ bool read_operands_for_fu(int fu_num)
 	else
 	{ // ARITHMETIC
 		// checking if Fj and Fk is ready or not and that the FU is not starving itself
-		return (reg_file_curr[fu_array_curr[fu_num]->Fj].is_ready || reg_file_curr[fu_array_curr[fu_num]->Fj].fu == fu_array_curr[fu_num]) && 
-			   (reg_file_curr[fu_array_curr[fu_num]->Fk].is_ready || reg_file_curr[fu_array_curr[fu_num]->Fk].fu == fu_array_curr[fu_num]);
+		functional_unit_t * Fj_waiting_for;
+		functional_unit_t * Fk_waiting_for;
+		functional_unit_t * curr_fu = fu_array_curr[fu_num];
+		bool is_Fj_ready = reg_file_curr[curr_fu->Fj].is_ready;
+		bool is_Fk_ready = reg_file_curr[curr_fu->Fk].is_ready;
+
+
+		if (is_Fj_ready && is_Fk_ready)
+		{ // both src regs are ready - we can read operands!
+			return true;
+		}
+		else if (is_Fj_ready || is_Fk_ready)
+		{ // one of the src regs is ready 
+			if (reg_file_curr[curr_fu->Fj].fu == curr_fu || reg_file_curr[curr_fu->Fk].fu == curr_fu)
+			{ // means one of the src regs is also the dest register - so we can read it
+				return true;
+			}
+		}
+		return false;
 	}	
 }
 
@@ -367,6 +384,10 @@ int read_operands()
 		{ // this means our FU is in ReadOperand stage
 			if (read_operands_for_fu(i))
 			{
+				fu_array_next[i]->Rj = false;
+				fu_array_next[i]->Rk = false;
+				fu_array_next[i]->Qj = NULL;
+				fu_array_next[i]->Qk = NULL;
 				fu_array_next[i]->is_execute = true;		
 				fu_array_next[i]->cycle_read_operands = clock;
 			}
@@ -377,7 +398,7 @@ int read_operands()
 
 float exec_op(float v1, float v2, int imm, op_code_t opcode)
 {
-	printf("exec_op: v1 = %f, v2 = %f, imm = %d, opcode = %d\n", v1, v2, imm, opcode);
+	//printf("exec_op: v1 = %f, v2 = %f, imm = %d, opcode = %d\n", v1, v2, imm, opcode);
 	switch (opcode)
 	{
 	case ADD: return v1 + v2;
@@ -385,9 +406,9 @@ float exec_op(float v1, float v2, int imm, op_code_t opcode)
 	case MULT: return v1 * v2;
 	case DIV: return v1 / v2;
 	case LD: float f; f = *((float*)&memory[imm]);
-		printf("f = %f\n", f);
+		//printf("f = %f\n", f);
 			 return f;
-	case ST: memory[imm] = *((int*)&v1);
+	case ST: memory[imm] = *((int*)&v2);
 			 return 0.0;
 	default: printf("ERROR in exec_op - invalid command!\n");
 			 return 1.0;
@@ -413,12 +434,31 @@ int execute()
 			}
 			else
 			{
+				
 				fu_array_next[i]->time_left--;
 			}
 		}
 	}
 	return 1;
 }
+
+
+int update_waiting_fus(int dest_reg)
+{
+	for (int i = 0; i < num_fus; i++)
+	{
+		if (fu_array_curr[i]->Fj == dest_reg && !fu_array_curr[i]->Rj)
+		{
+			fu_array_next[i]->Rj = true;
+		}
+		if (fu_array_curr[i]->Fk == dest_reg && !fu_array_curr[i]->Rk)
+		{
+			fu_array_next[i]->Rk = true;
+		}
+	}
+	return 1;
+}
+
 
 int write_back()
 {
@@ -454,6 +494,7 @@ int write_back()
 				{ // Writeback
 					reg_file_next[dest_reg].is_ready = true;
 					reg_file_next[dest_reg].value = fu_array_curr[i]->wb_val;
+					update_waiting_fus(dest_reg);
 					fu_array_curr[i]->cycle_write_result = clock;
 					fu_print(fu_array_curr[i]);
 					init_fu(fu_array_next[i], fu_array_next[i]->unit_type, fu_array_next[i]->unit_index);
@@ -562,36 +603,48 @@ void traceunit()
 				char Rk[MAX_LINE_LEN];
 				int cycle = clock;
 				char unit[MAX_LINE_LEN];
-				sprintf(unit, "%s%d", opcode_num_to_string(fu_array_next[i]->unit_type), fu_array_next[i]->unit_index);
-				switch (fu_array_next[i]->unit_type)
+				sprintf(unit, "%s%d", opcode_num_to_string(fu_array_curr[i]->unit_type), fu_array_curr[i]->unit_index);
+				switch (fu_array_curr[i]->unit_type)
 				{
 				case MULT:
 				case DIV:
 				case SUB:
 				case ADD:
-					sprintf(Fi, "F%d", fu_array_next[i]->Fi);
-					sprintf(Fj, "F%d", fu_array_next[i]->Fj);
-					sprintf(Fk, "F%d", fu_array_next[i]->Fk);
-					if (!fu_array_next[i]->Rj)
-					{
-						sprintf(Rj, "No");
-						sprintf(Qj, "%s%d", opcode_num_to_string(fu_array_next[i]->Qj->unit_type), fu_array_next[i]->Qj->unit_index);
-					}
-					else
+					sprintf(Fi, "F%d", fu_array_curr[i]->Fi);
+					sprintf(Fj, "F%d", fu_array_curr[i]->Fj);
+					sprintf(Fk, "F%d", fu_array_curr[i]->Fk);
+					if (fu_array_curr[i]->Rj)
 					{
 						sprintf(Rj, "Yes");
-						sprintf(Qj, "-");
-					}
-					if (!fu_array_next[i]->Rk)
-					{
-						sprintf(Rk, "No");
-						sprintf(Qk, "%s%d", opcode_num_to_string(fu_array_next[i]->Qk->unit_type), fu_array_next[i]->Qk->unit_index);
 					}
 					else
 					{
-						sprintf(Rk, "Yes");
-						sprintf(Qk, "-");
+						sprintf(Rj, "No");
 					}
+					if (fu_array_curr[i]->Rk)
+					{
+						sprintf(Rk, "Yes");
+					}
+					else
+					{
+						sprintf(Rk, "No");
+					}
+					if (fu_array_curr[i]->Qj)
+					{
+						sprintf(Qj, "%s%d", opcode_num_to_string(fu_array_curr[i]->Qj->unit_type), fu_array_curr[i]->Qj->unit_index);
+					}
+					else
+					{
+						sprintf(Qj, "-");
+					}
+					if (fu_array_curr[i]->Qk)
+					{
+						sprintf(Qk, "%s%d", opcode_num_to_string(fu_array_curr[i]->Qk->unit_type), fu_array_curr[i]->Qk->unit_index);
+					}
+					else
+					{
+						sprintf(Qk, "-");
+					}					
 					break;
 				case LD:
 					sprintf(Fi, "F%d", fu_array_next[i]->Fi);
@@ -608,14 +661,20 @@ void traceunit()
 					sprintf(Fk, "F%d", fu_array_next[i]->Fk);
 					sprintf(Rj, "Yes");
 					sprintf(Qj, "-");
-					if (!fu_array_next[i]->Rk)
+					if (fu_array_curr[i]->Rk)
 					{
-						sprintf(Rk, "No");
-						sprintf(Qk, "%s%d", opcode_num_to_string(fu_array_next[i]->Qk->unit_type), fu_array_next[i]->Qk->unit_index);
+						sprintf(Rk, "Yes");
 					}
 					else
 					{
-						sprintf(Rk, "Yes");
+						sprintf(Rk, "No");
+					}
+					if (fu_array_curr[i]->Qk)
+					{
+						sprintf(Qk, "%s%d", opcode_num_to_string(fu_array_curr[i]->Qk->unit_type), fu_array_curr[i]->Qk->unit_index);
+					}
+					else
+					{
 						sprintf(Qk, "-");
 					}
 					break;

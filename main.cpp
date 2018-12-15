@@ -35,10 +35,10 @@ int main(int argc, char * argv[]) {
 		issue();
 		read_operands();
 		execute();
-		write_back();
-		sample_state();  // copy next to curr
+		write_back();		
 		//print_regout(true);
 		traceunit();
+		sample_state();  // copy next to curr
 	//	wrire_progress_to_output_files();
 	}
 	print_regout(false);

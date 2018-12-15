@@ -33,4 +33,5 @@ void print_memout(bool is_dbg);
 void traceunit();
 const char * opcode_num_to_string(int opcode_num);
 void init_files();
+int update_waiting_fus(int dest_reg);
 #endif // SCOREBOARD_H_
