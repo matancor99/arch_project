@@ -662,34 +662,36 @@ void traceunit()
 					if (fu_array_curr[i]->Rj)
 					{
 						sprintf(Rj, "Yes");
+						sprintf(Qj, "-");
 					}
 					else
 					{
 						sprintf(Rj, "No");
+						if (fu_array_curr[i]->Qj)
+						{
+							sprintf(Qj, "%s%d", opcode_num_to_string(fu_array_curr[i]->Qj->unit_type), fu_array_curr[i]->Qj->unit_index);
+						}
+						else
+						{
+							sprintf(Qj, "-");
+						}
 					}
 					if (fu_array_curr[i]->Rk)
 					{
 						sprintf(Rk, "Yes");
+						sprintf(Qk, "-");
 					}
 					else
 					{
 						sprintf(Rk, "No");
-					}
-					if (fu_array_curr[i]->Qj)
-					{
-						sprintf(Qj, "%s%d", opcode_num_to_string(fu_array_curr[i]->Qj->unit_type), fu_array_curr[i]->Qj->unit_index);
-					}
-					else
-					{
-						sprintf(Qj, "-");
-					}
-					if (fu_array_curr[i]->Qk)
-					{
-						sprintf(Qk, "%s%d", opcode_num_to_string(fu_array_curr[i]->Qk->unit_type), fu_array_curr[i]->Qk->unit_index);
-					}
-					else
-					{
-						sprintf(Qk, "-");
+						if (fu_array_curr[i]->Qk)
+						{
+							sprintf(Qk, "%s%d", opcode_num_to_string(fu_array_curr[i]->Qk->unit_type), fu_array_curr[i]->Qk->unit_index);
+						}
+						else
+						{
+							sprintf(Qk, "-");
+						}
 					}					
 					break;
 				case LD:
@@ -710,19 +712,21 @@ void traceunit()
 					if (fu_array_curr[i]->Rk)
 					{
 						sprintf(Rk, "Yes");
+						sprintf(Qk, "-");
 					}
 					else
 					{
 						sprintf(Rk, "No");
+						if (fu_array_curr[i]->Qk)
+						{
+							sprintf(Qk, "%s%d", opcode_num_to_string(fu_array_curr[i]->Qk->unit_type), fu_array_curr[i]->Qk->unit_index);
+						}
+						else
+						{
+							sprintf(Qk, "-");
+						}
 					}
-					if (fu_array_curr[i]->Qk)
-					{
-						sprintf(Qk, "%s%d", opcode_num_to_string(fu_array_curr[i]->Qk->unit_type), fu_array_curr[i]->Qk->unit_index);
-					}
-					else
-					{
-						sprintf(Qk, "-");
-					}
+					
 					break;
 				default:
 					break;
