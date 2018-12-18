@@ -27,10 +27,10 @@ int main(int argc, char * argv[]) {
 	const char * traceinst_path = argv[5];
 	const char * traceunit_path = argv[6];
 	init_func(cfg_path, memin_path, memout_path, regout_path, traceinst_path, traceunit_path);
-
-	for(int i = 0; i < 25; i++)
+	int cycle = 0;
+	while(!is_stop_running())
 	{ // TODO - need to handle HALT and end of execution		
-		printf("cycle = %d\n", i);
+		printf("cycle = %d\n", cycle);
 		fetch();
 		issue();
 		read_operands();
@@ -39,7 +39,7 @@ int main(int argc, char * argv[]) {
 		//print_regout(true);
 		traceunit();
 		sample_state();  // copy next to curr
-	//	wrire_progress_to_output_files();
+		cycle++;
 	}
 	print_regout(false);
 	print_memout(false);

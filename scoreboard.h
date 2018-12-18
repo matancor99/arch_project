@@ -38,4 +38,5 @@ void traceinst(int pc, trace_inst_phase_t phase);
 void set_traceinst_fu(int pc, op_code_t fu_type, int fu_idx);
 void init_traceinst();
 void print_traceinst(bool is_dbg);
+bool is_stop_running();
 #endif // SCOREBOARD_H_

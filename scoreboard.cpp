@@ -110,7 +110,6 @@ int init_arch_spec(const char * cfg_path)
 		int cfg_value = 0;
 		while (fscanf(cfg_file, "%s = %d\n", cfg_name, &cfg_value) != EOF)
 		{
-			//printf("%s %d\n", cfg_name, cfg_value);
 			op_code_t opcode = get_unit_type_from_cfg_line(cfg_name);
 			if (line_num < UNIT_TYPE_NUM)
 			{ // we are reading the FUs amounts
@@ -118,7 +117,7 @@ int init_arch_spec(const char * cfg_path)
 			}
 			else if (line_num >= UNIT_TYPE_NUM && line_num < 2 * UNIT_TYPE_NUM)
 			{ // we are reading the FUs delays
-				delays_array[opcode] = cfg_value - 2; // TODO - figure out execution time
+				delays_array[opcode] = cfg_value - 1; // TODO - figure out execution time
 			}
 			if (line_num == 2 * UNIT_TYPE_NUM - 1)
 			{ // the next line is the trace_unit,
@@ -289,7 +288,6 @@ int fetch()
 		}
 		queue_push(&inst_queue_next, &inst);
 		program_counter++;
-		//queue_print(&inst_queue_next);
 	}
 	else
 	{
@@ -379,10 +377,10 @@ void traceinst(int pc, trace_inst_phase_t phase)
 {
 	switch (phase)
 	{
-	case ISSUE: traceinst_arr[pc].issued = clock;
-	case READ_OPERANDS: traceinst_arr[pc].read_operands = clock;
-	case EXEC: traceinst_arr[pc].exec = clock;
-	case WB: traceinst_arr[pc].wb = clock;
+	case ISSUE: traceinst_arr[pc].issued = clock; break;
+	case READ_OPERANDS: traceinst_arr[pc].read_operands = clock; break;
+	case EXEC: traceinst_arr[pc].exec = clock; break;
+	case WB: traceinst_arr[pc].wb = clock; break;
 	default: printf("traceinst ERROR!\n");
 	}	
 }
@@ -391,10 +389,41 @@ bool read_operands_for_fu(int fu_num)
 {
 	if (fu_array_curr[fu_num]->unit_type == ST)
 	{ // STORE 
-		return reg_file_curr[fu_array_curr[fu_num]->Fk].is_ready || reg_file_curr[fu_array_curr[fu_num]->Fk].fu == fu_array_curr[fu_num];
+		bool cond1 = false;
+		if (reg_file_curr[fu_array_curr[fu_num]->Fk].is_ready ||
+			reg_file_curr[fu_array_curr[fu_num]->Fk].fu == fu_array_curr[fu_num])
+		{
+			cond1 = true;
+		}
+		// we look for previous loads from the same address which have not yet finished
+		// if we find any - we wait
+		bool cond2 = true;
+		for (int i = 0; i < num_fus; i++)
+		{
+			if (fu_array_curr[i]->unit_type == LD &&
+				fu_array_curr[i]->is_busy &&
+				fu_array_curr[i]->immediate == fu_array_curr[fu_num]->immediate &&
+				fu_array_curr[i]->instruction_num < fu_array_curr[fu_num]->instruction_num)
+			{
+				return false;
+			}
+		}
+		return cond1 && cond2;
 	}
 	else if (fu_array_curr[fu_num]->unit_type == LD)
-	{ // LOAD
+	{	// LOAD
+		// we look for previous stores to the same address which have not yet finished
+		// if we find any - we wait
+		for (int i = 0; i < num_fus; i++)
+		{
+			if (fu_array_curr[i]->unit_type == ST &&
+				fu_array_curr[i]->is_busy &&
+				fu_array_curr[i]->immediate == fu_array_curr[fu_num]->immediate &&
+				fu_array_curr[i]->instruction_num < fu_array_curr[fu_num]->instruction_num)
+			{
+				return false;
+			}
+		}
 		return true;
 	}
 	else
@@ -444,7 +473,6 @@ int read_operands()
 
 float exec_op(float v1, float v2, int imm, op_code_t opcode)
 {
-	//printf("exec_op: v1 = %f, v2 = %f, imm = %d, opcode = %d\n", v1, v2, imm, opcode);
 	switch (opcode)
 	{
 	case ADD: return v1 + v2;
@@ -452,7 +480,6 @@ float exec_op(float v1, float v2, int imm, op_code_t opcode)
 	case MULT: return v1 * v2;
 	case DIV: return v1 / v2;
 	case LD: float f; f = *((float*)&memory[imm]);
-		//printf("f = %f\n", f);
 			 return f;
 	case ST: memory[imm] = *((int*)&v2);
 			 return 0.0;
@@ -469,9 +496,8 @@ int execute()
 		if (fu_array_curr[i]->is_execute)
 		{
 			functional_unit_t * fu_curr = fu_array_curr[i];
-			if (fu_array_curr[i]->time_left == 0)
+			if (fu_array_curr[i]->time_left == 1 || fu_array_curr[i]->time_left == 0)
 			{ // execution ended!
-				//printf("execute: type: %d, val1 = %f, val2 = %f, imm = %d", reg_file_curr[fu_curr->unit_type], reg_file_curr[fu_curr->Fj].value, reg_file_curr[fu_curr->Fk].value, fu_curr->immediate);
 				fu_array_next[i]->wb_val = exec_op(reg_file_curr[fu_curr->Fj].value, reg_file_curr[fu_curr->Fk].value, fu_curr->immediate, fu_curr->unit_type);
 				fu_array_next[i]->is_execute = false;
 				fu_array_next[i]->is_writeback = true;
@@ -482,6 +508,12 @@ int execute()
 			{
 				
 				fu_array_next[i]->time_left--;
+				//if (fu_array_curr[i]->time_left == delays_array[fu_array_curr[i]->unit_type] &&
+				//	fu_array_next[i]->time_left > 0)
+				//{ // this is the first cycle of execution, so we decrement time_left again because
+				//  // execution "began" when we read the operands
+				//	fu_array_next[i]->time_left--;
+				//}
 			}
 		}
 	}
@@ -781,4 +813,17 @@ void set_traceinst_fu(int pc, op_code_t fu_type, int fu_idx)
 {
 	traceinst_arr[pc].fu_type = fu_type;
 	traceinst_arr[pc].fu_idx = fu_idx;
+}
+
+
+bool is_stop_running()
+{
+	for (int i = 0; i < num_fus; i++)
+	{
+		if (fu_array_curr[i]->is_busy)
+		{// we still have active FUs - keep running
+			return false;
+		}
+	}
+	return is_halt; // if all the FUs are idle, and we have nothing left to fetch - stop.
 }
