@@ -10,4 +10,4 @@ mul_delay = 10
 div_delay = 20
 ld_delay = 1
 st_delay = 10
-trace_unit = LD0
+trace_unit = ADD2

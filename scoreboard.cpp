@@ -75,7 +75,7 @@ op_code_t get_unit_type_from_cfg_line(char * line)
 	{
 		opcode = SUB;
 	}
-	else if (strcmp(unit_name, "mul") == 0)
+	else if (strcmp(unit_name, "mult") == 0 || strcmp(unit_name, "mul") == 0)
 	{
 		opcode = MULT;
 	}
