@@ -2,10 +2,10 @@
 //output file names
 //char * memout_file_name = "C:\\Users\\kfir\\Documents\\ee_masters\\winter19\\comp_archs\\project\\proj_output\\memout.txt";
 //char * regout_file_name = "C:\\Users\\kfir\\Documents\\ee_masters\\winter19\\comp_archs\\project\\proj_output\\regout.txt";
-const char * memout_file_name = "memout.txt";
-const char * regout_file_name = "regout.txt";
-const char * traceunit_file_name = "traceunit.txt";
-const char * traceinst_file_name = "traceinst.txt";
+const char * memout_file_name;
+const char * regout_file_name;
+const char * traceunit_file_name;
+const char * traceinst_file_name;
 
 
 traceinst_t * traceinst_arr;
@@ -210,8 +210,13 @@ int init_instruction_queue(instruction_queue_t * inst_q)
 	return 1;
 }
 
-void init_files()
+void init_files(const char * memout_path, const char * regout_path, const char * traceinst_path, const char * traceunit_path)
 {
+	memout_file_name = memout_path;
+	regout_file_name = regout_path;
+	traceinst_file_name = traceinst_path;
+	traceunit_file_name = traceunit_path;
+
 	FILE * file_traceunit = fopen(traceunit_file_name, "wb");
 	if (file_traceunit)
 	{
@@ -250,7 +255,7 @@ void init_traceinst()
 
 int init_func(const char * cfg_path, const char * memin_path, const char * memout_path, const char * regout_path, const char * traceinst_path, const char * traceunit_path)
 {
-	init_files();
+	init_files(memout_path, regout_path, traceinst_path, traceunit_path);
 	init_registers(reg_file_curr);
 	init_registers(reg_file_next);
 	init_memory(memin_path);
@@ -641,7 +646,7 @@ void print_memout(bool is_dbg)
 			return;
 		}
 	}
-	for (int i = 0; i < used_mem_len; i++)
+	for (int i = 0; i < MEM_LEN; i++)
 	{
 		char mem_line[12];
 		sprintf(mem_line, "%08x\n", memory[i]);
