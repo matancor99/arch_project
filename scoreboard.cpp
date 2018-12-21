@@ -1,7 +1,5 @@
 #include "scoreboard.h"
 //output file names
-//char * memout_file_name = "C:\\Users\\kfir\\Documents\\ee_masters\\winter19\\comp_archs\\project\\proj_output\\memout.txt";
-//char * regout_file_name = "C:\\Users\\kfir\\Documents\\ee_masters\\winter19\\comp_archs\\project\\proj_output\\regout.txt";
 const char * memout_file_name;
 const char * regout_file_name;
 const char * traceunit_file_name;
@@ -117,7 +115,7 @@ int init_arch_spec(const char * cfg_path)
 			}
 			else if (line_num >= UNIT_TYPE_NUM && line_num < 2 * UNIT_TYPE_NUM)
 			{ // we are reading the FUs delays
-				delays_array[opcode] = cfg_value - 1; // TODO - figure out execution time
+				delays_array[opcode] = cfg_value;
 			}
 			if (line_num == 2 * UNIT_TYPE_NUM - 1)
 			{ // the next line is the trace_unit,
@@ -498,27 +496,17 @@ int execute()
 {
 	for (int i = 0; i < num_fus; i++)
 	{
-		if (fu_array_curr[i]->is_execute)
+		if (fu_array_next[i]->is_execute)
 		{
+			fu_array_next[i]->time_left--;
 			functional_unit_t * fu_curr = fu_array_curr[i];
-			if (fu_array_curr[i]->time_left == 1 || fu_array_curr[i]->time_left == 0)
+			if (fu_array_next[i]->time_left == 0)
 			{ // execution ended!
 				fu_array_next[i]->wb_val = exec_op(reg_file_curr[fu_curr->Fj].value, reg_file_curr[fu_curr->Fk].value, fu_curr->immediate, fu_curr->unit_type);
 				fu_array_next[i]->is_execute = false;
 				fu_array_next[i]->is_writeback = true;
 				traceinst(fu_curr->instruction_num, EXEC);
 				set_traceinst_fu(fu_curr->instruction_num, fu_curr->unit_type, fu_curr->unit_index);
-			}
-			else
-			{
-				
-				fu_array_next[i]->time_left--;
-				//if (fu_array_curr[i]->time_left == delays_array[fu_array_curr[i]->unit_type] &&
-				//	fu_array_next[i]->time_left > 0)
-				//{ // this is the first cycle of execution, so we decrement time_left again because
-				//  // execution "began" when we read the operands
-				//	fu_array_next[i]->time_left--;
-				//}
 			}
 		}
 	}
