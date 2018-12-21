@@ -435,9 +435,15 @@ bool read_operands_for_fu(int fu_num)
 		functional_unit_t * Fj_waiting_for;
 		functional_unit_t * Fk_waiting_for;
 		functional_unit_t * curr_fu = fu_array_curr[fu_num];
-		bool is_Fj_ready = reg_file_curr[curr_fu->Fj].is_ready;
-		bool is_Fk_ready = reg_file_curr[curr_fu->Fk].is_ready;
+		bool is_Fj_ready;
+		bool is_Fk_ready;		
+		// the registers are ready if the reg is not waiting for any FU
+		// or if it's waiting for a result of an instruction later than the current one
+		is_Fj_ready =	reg_file_curr[curr_fu->Fj].is_ready ||
+						reg_file_curr[curr_fu->Fj].fu->instruction_num > curr_fu->instruction_num;
 
+		is_Fk_ready = reg_file_curr[curr_fu->Fk].is_ready ||
+			reg_file_curr[curr_fu->Fk].fu->instruction_num > curr_fu->instruction_num;
 
 		if (is_Fj_ready && is_Fk_ready)
 		{ // both src regs are ready - we can read operands!
@@ -533,8 +539,10 @@ int update_waiting_fus(int dest_reg)
 
 int write_back()
 {
+	bool is_stall = false;
 	for (int i = 0; i < num_fus; i++)
 	{
+		is_stall = false;
 		if (fu_array_curr[i]->is_writeback)
 		{
 			int dest_reg = fu_array_curr[i]->Fi;
@@ -549,6 +557,7 @@ int write_back()
 					&& ( dest_reg == fu_array_curr[j]->Fj || dest_reg == fu_array_curr[j]->Fk)
 					&& fu_array_curr[j]->instruction_num < fu_array_curr[i]->instruction_num)
 				{ // WAR!
+					is_stall = true;
 					break;
 				}
 				// handle WAW hazards:
@@ -559,20 +568,22 @@ int write_back()
 						&& dest_reg == fu_array_curr[j]->Fi
 						&& fu_array_curr[j]->instruction_num < fu_array_curr[i]->instruction_num)
 				{ // WAW!
-					break;
-				}
-				else
-				{ // Writeback
-					reg_file_next[dest_reg].is_ready = true;
-					reg_file_next[dest_reg].value = fu_array_curr[i]->wb_val;
-					update_waiting_fus(dest_reg);
-					traceinst(fu_array_curr[i]->instruction_num, WB);
-					//fu_print(fu_array_curr[i]);
-					init_fu(fu_array_next[i], fu_array_next[i]->unit_type, fu_array_next[i]->unit_index);
+					is_stall = true;
 					break;
 				}
 
 			}
+			if (!is_stall)
+			{
+				// if no hazard was found for all the FUs, we can writeback
+				// Writeback
+				reg_file_next[dest_reg].is_ready = true;
+				reg_file_next[dest_reg].value = fu_array_curr[i]->wb_val;
+				update_waiting_fus(dest_reg);
+				traceinst(fu_array_curr[i]->instruction_num, WB);
+				init_fu(fu_array_next[i], fu_array_next[i]->unit_type, fu_array_next[i]->unit_index);				
+			}
+			
 		}
 	}
 	return 1;
