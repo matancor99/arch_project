@@ -38,4 +38,7 @@ void set_traceinst_fu(int pc, op_code_t fu_type, int fu_idx);
 void init_traceinst();
 void print_traceinst(bool is_dbg);
 bool is_stop_running();
+void strip_spaces(char * line);
+void parse_cfg_line(const char * cfg_name, char * cfg_val_str);
+op_code_t get_unit_type_num_from_unit_name(char * unit_name);
 #endif // SCOREBOARD_H_

@@ -58,10 +58,8 @@ int init_memory(const char * memin_path)
 	return 1;
 }
 
-op_code_t get_unit_type_from_cfg_line(char * line)
-{
-	char * unit_name = strtok(line, "_");
-	//printf("%s\n", unit_name);
+op_code_t get_unit_type_num_from_unit_name(char * unit_name)
+{	
 	for (int i = 0; unit_name[i] != '\0'; i++)
 	{
 		unit_name[i] = tolower(unit_name[i]);
@@ -93,48 +91,130 @@ op_code_t get_unit_type_from_cfg_line(char * line)
 	}
 	else
 	{
-		printf("ERROR in get_unit_type_from_cfg_line\n");
+		printf("ERROR in get_unit_type_num_from_unit_name\n");
 		
 	}
 	return opcode;
 }
+
+void strip_spaces(char * line)
+{
+	char * i = line;
+	char * j = line;
+	while (*j != 0)
+	{
+		*i = *j++;
+		if (!isspace(*i))
+		{
+			i++;
+		}
+	}
+	*i = 0;
+}
+
+void parse_cfg_line(const char * cfg_name, char * cfg_val_str)
+{
+	int cfg_val_num;
+	if (*cfg_val_str >= '0' && 
+		*cfg_val_str <= '9')
+	{
+		cfg_val_num = atoi(cfg_val_str);
+	}
+	if (strcmp(cfg_name, "add_nr_units") == 0)
+	{		
+		nr_units_array[ADD] = cfg_val_num;
+	}
+	else if (strcmp(cfg_name, "sub_nr_units") == 0)
+	{
+		nr_units_array[SUB] = cfg_val_num;
+	}
+	else if (strcmp(cfg_name, "mul_nr_units") == 0)
+	{
+		nr_units_array[MULT] = cfg_val_num;
+	}
+	else if (strcmp(cfg_name, "div_nr_units") == 0)
+	{
+		nr_units_array[DIV] = cfg_val_num;
+	}
+	else if (strcmp(cfg_name, "ld_nr_units") == 0)
+	{
+		nr_units_array[LD] = cfg_val_num;
+	}
+	else if (strcmp(cfg_name, "st_nr_units") == 0)
+	{
+		nr_units_array[ST] = cfg_val_num;
+	}
+	else if (strcmp(cfg_name, "st_delay") == 0)
+	{
+		delays_array[ST] = cfg_val_num;
+	}
+	else if (strcmp(cfg_name, "ld_delay") == 0)
+	{
+		delays_array[LD] = cfg_val_num;
+	}
+	else if (strcmp(cfg_name, "div_delay") == 0)
+	{
+		delays_array[DIV] = cfg_val_num;
+	}
+	else if (strcmp(cfg_name, "mul_delay") == 0)
+	{
+		delays_array[MULT] = cfg_val_num;
+	}
+	else if (strcmp(cfg_name, "sub_delay") == 0)
+	{
+		delays_array[SUB] = cfg_val_num;
+	}
+	else if (strcmp(cfg_name, "add_delay") == 0)
+	{
+		delays_array[ADD] = cfg_val_num;
+	}
+	else if (strcmp(cfg_name, "trace_unit") == 0)
+	{
+		char unit_num_str;
+		if (cfg_val_str)
+		{
+			unit_num_str = cfg_val_str[strlen(cfg_val_str) - 1];
+		}
+		char * unit_name = strtok(cfg_val_str, "[0-9]");
+		if (unit_name)
+		{
+			int unit_num = atoi(&unit_num_str);
+			trace_unit_cfg.unit_num = unit_num;
+			trace_unit_cfg.unit_type = get_unit_type_num_from_unit_name(unit_name);
+		}
+	}
+}
+
 int init_arch_spec(const char * cfg_path)
 {
 	FILE * cfg_file = fopen(cfg_path, "r");
 	if (cfg_file)
 	{
+		char * line = (char *)malloc(sizeof(char)*MAX_LINE_LEN);
 		char cfg_name[MAX_LINE_LEN];
-		int line_num = 0;
-		int cfg_value = 0;
-		while (fscanf(cfg_file, "%s = %d\n", cfg_name, &cfg_value) != EOF)
+		bool done = false;
+		do 
 		{
-			op_code_t opcode = get_unit_type_from_cfg_line(cfg_name);
-			if (line_num < UNIT_TYPE_NUM)
-			{ // we are reading the FUs amounts
-				nr_units_array[opcode] = cfg_value;
-			}
-			else if (line_num >= UNIT_TYPE_NUM && line_num < 2 * UNIT_TYPE_NUM)
-			{ // we are reading the FUs delays
-				delays_array[opcode] = cfg_value;
-			}
-			if (line_num == 2 * UNIT_TYPE_NUM - 1)
-			{ // the next line is the trace_unit,
-			  // so we read it and exit
-				
-				char trace_unit_val[MAX_LINE_LEN];
-				char trace_unit_name[MAX_LINE_LEN];
-				int trace_unit_num;
-				fscanf(cfg_file, "%s = %[^0-9]%d\n", cfg_name, trace_unit_name, &trace_unit_num);
-				
-				//char * trace_unit_name = strtok(trace_unit_val, "0123456789");
-				op_code_t unit_type = get_unit_type_from_cfg_line(trace_unit_name);
-				trace_unit_cfg.unit_num = trace_unit_num;
-				trace_unit_cfg.unit_type = unit_type;
+			char nl = '\0';
+			if (!fgets(line, MAX_LINE_LEN, cfg_file))
+			{
+				done = true;
 				break;
 			}
-			line_num++;
-		}
-	}
+			strip_spaces(line);
+			char * cfg_name = strtok(line, "=");
+			if (cfg_name)
+			{
+				char * cfg_val_str = strtok(NULL, "=");
+				if (cfg_val_str)
+				{
+					parse_cfg_line(cfg_name, cfg_val_str);
+				}				
+			}
+			
+			done = false;
+		} while (!done);
+	} 
 	return 1;
 }
 
@@ -182,7 +262,6 @@ int init_functional_units(functional_unit *** fu_arr)
 	}
 	num_fus = total_num_fus;
 	*fu_arr = (functional_unit **)malloc(total_num_fus * sizeof(functional_unit *));
-	//fu_array_next = (functional_unit **)malloc(total_num_fus * sizeof(functional_unit *));
 	init_fu_arr(*fu_arr, total_num_fus);
 	//init_fu_arr(fu_array_next, total_num_fus);
 	int units_init_cnt = 0;
@@ -191,7 +270,6 @@ int init_functional_units(functional_unit *** fu_arr)
 		int num_fus_of_type = nr_units_array[unit_type];
 		for (int unit_num = 0; unit_num < num_fus_of_type; unit_num++)
 		{
-			//init_fu(fu_array_curr[units_init_cnt], (op_code_t)unit_type, unit_num);
 			init_fu((*fu_arr)[units_init_cnt], (op_code_t)unit_type, unit_num);
 			units_init_cnt++;
 		}
