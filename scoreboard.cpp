@@ -656,7 +656,9 @@ int write_back()
 				// if no hazard was found for all the FUs, we can writeback
 				// Writeback
 				reg_file_next[dest_reg].is_ready = true;
-				reg_file_next[dest_reg].value = fu_array_curr[i]->wb_val;
+				if (fu_array_curr[i]->unit_type != ST) {
+					reg_file_next[dest_reg].value = fu_array_curr[i]->wb_val;
+				}
 				update_waiting_fus(dest_reg);
 				traceinst(fu_array_curr[i]->instruction_num, WB);
 				init_fu(fu_array_next[i], fu_array_next[i]->unit_type, fu_array_next[i]->unit_index);				
