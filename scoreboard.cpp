@@ -905,15 +905,15 @@ void set_traceinst_fu(int pc, op_code_t fu_type, int fu_idx)
 	traceinst_arr[pc].fu_idx = fu_idx;
 }
 
-
+// This function checks if all the instrucutions finished their wb stage.
 bool is_stop_running()
-{
-	for (int i = 0; i < num_fus; i++)
+{	
+	bool ret_val = true;
+	for (int i = 0; i < num_insts; i++)
 	{
-		if (fu_array_curr[i]->is_busy)
-		{// we still have active FUs - keep running
-			return false;
+		if (traceinst_arr[i].wb == 0) {
+			ret_val = false;
 		}
 	}
-	return is_halt; // if all the FUs are idle, and we have nothing left to fetch - stop.
+	return ret_val;
 }
