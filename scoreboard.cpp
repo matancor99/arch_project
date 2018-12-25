@@ -326,6 +326,8 @@ void init_traceinst()
 		traceinst_arr[i].wb = 0;
 		traceinst_arr[i].pc = i;
 		traceinst_arr[i].command_hex = memory[i];
+		traceinst_arr[i].fu_type = HALT;
+		traceinst_arr[i].fu_idx = 0;
 	}
 }
 
@@ -655,7 +657,11 @@ int write_back()
 			{
 				// if no hazard was found for all the FUs, we can writeback
 				// Writeback
-				reg_file_next[dest_reg].is_ready = true;
+
+				// The dest reg is ready only when the last using fu is finished
+				if (reg_file_next[dest_reg].fu == fu_array_curr[i]) {
+					reg_file_next[dest_reg].is_ready = true;
+				}
 				if (fu_array_curr[i]->unit_type != ST) {
 					reg_file_next[dest_reg].value = fu_array_curr[i]->wb_val;
 				}

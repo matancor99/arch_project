@@ -1,4 +1,4 @@
-add_nr_units = 1
+add_nr_units = 2
 sub_nr_units = 1
 mul_nr_units = 1
 div_nr_units = 1
@@ -10,4 +10,4 @@ mul_delay = 1
 div_delay = 1
 ld_delay = 3
 st_delay = 3
-trace_unit = SUB0
+trace_unit = ADD0
