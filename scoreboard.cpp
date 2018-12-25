@@ -214,6 +214,7 @@ int init_arch_spec(const char * cfg_path)
 			
 			done = false;
 		} while (!done);
+		free(line);
 	} 
 	return 1;
 }
@@ -916,4 +917,17 @@ bool is_stop_running()
 		}
 	}
 	return ret_val;
+}
+
+
+
+void cleanup_function() {
+	free(traceinst_arr);
+	for (int i = 0; i < num_fus; i++)
+	{
+		free(fu_array_curr[i]);
+		free(fu_array_next[i]);
+	}
+	free(fu_array_curr);
+	free(fu_array_next);
 }

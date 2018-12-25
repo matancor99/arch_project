@@ -41,4 +41,5 @@ bool is_stop_running();
 void strip_spaces(char * line);
 void parse_cfg_line(const char * cfg_name, char * cfg_val_str);
 op_code_t get_unit_type_num_from_unit_name(char * unit_name);
+void cleanup_function();
 #endif // SCOREBOARD_H_
