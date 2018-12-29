@@ -175,7 +175,7 @@ void parse_cfg_line(const char * cfg_name, char * cfg_val_str)
 		{
 			unit_num_str = cfg_val_str[strlen(cfg_val_str) - 1];
 		}
-		char * unit_name = strtok(cfg_val_str, "[0-9]");
+		char * unit_name = strtok(cfg_val_str, "[0123456789]");
 		if (unit_name)
 		{
 			int unit_num = atoi(&unit_num_str);
