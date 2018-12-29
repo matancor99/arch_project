@@ -8,6 +8,6 @@ add_delay = 2
 sub_delay = 5
 mul_delay = 10
 div_delay = 20
-ld_delay = 1
+ld_delay = 2
 st_delay = 10
 trace_unit = LD0

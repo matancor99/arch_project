@@ -1,0 +1,13 @@
+3 LD0 F2 - - - - Yes Yes
+4 LD0 F2 - - - - Yes Yes
+5 LD0 F2 - - - - Yes Yes
+6 LD0 F2 - - - - Yes Yes
+7 LD0 F2 - - - - Yes Yes
+8 LD0 F2 - - - - Yes Yes
+9 LD0 F2 - - - - Yes Yes
+10 LD0 F2 - - - - Yes Yes
+11 LD0 F2 - - - - Yes Yes
+12 LD0 F2 - - - - Yes Yes
+13 LD0 F2 - - - - Yes Yes
+14 LD0 F2 - - - - Yes Yes
+15 LD0 F0 - - - - Yes Yes

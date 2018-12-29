@@ -1,0 +1,4 @@
+ST F1, MEM[10]
+LD F2, MEM[10]
+ST F3, MEM[10]
+LD F4, MEM[10]

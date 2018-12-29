@@ -1,0 +1,11 @@
+3 SUB0 F0 F4 F3 - - Yes Yes
+4 SUB0 F0 F4 F3 - - No No
+5 SUB0 F0 F4 F3 - - No No
+6 SUB0 F0 F4 F3 - - No No
+7 SUB0 F0 F4 F3 - - No No
+8 SUB0 F0 F4 F3 - - No No
+9 SUB0 F0 F4 F3 - - No No
+10 SUB0 F0 F4 F3 - - No No
+11 SUB0 F0 F4 F3 - - No No
+12 SUB0 F0 F4 F3 - - No No
+13 SUB0 F0 F4 F3 - - No No
