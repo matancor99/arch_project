@@ -1,33 +1,37 @@
 #include "scoreboard.h"
+// ***********************************************************************
+//  GLOBALS 
+// ***********************************************************************
 //output file names
-const char * memout_file_name;
-const char * regout_file_name;
-const char * traceunit_file_name;
-const char * traceinst_file_name;
+const char * memout_file_name; // path of memout file
+const char * regout_file_name; // path of regout file
+const char * traceunit_file_name; // path of traceunit_file
+const char * traceinst_file_name; // path of traceinst_file
 
+traceinst_t * traceinst_arr; // pointer to an array which is initialized with all the instructions
+							 // in the memory and updated with the execution units and cycle numbers
+							 // for every command
+int num_insts; // number of instructions in the program - size of traceinst_arr
 
-traceinst_t * traceinst_arr;
-int num_insts;
-
-int memory[MEM_LEN] = { 0 };
-int used_mem_len; // number of rows actually used in memory.
-				  // will make printing the memout easier by only printing used lines
-int program_counter = 0;
+int memory[MEM_LEN] = { 0 }; // global memory
+int used_mem_len; // number of rows actually used in memory.				  
+int program_counter = 0; // pc for fetching instructions
 int clock = 0; //system cycle count
 bool is_halt = false; // when we read halt command we should no longer fetch
-// Globals initilazation
-int nr_units_array[UNIT_TYPE_NUM];
-int delays_array[UNIT_TYPE_NUM];
+// Global HW cfg initilazation
+int nr_units_array[UNIT_TYPE_NUM]; // number of units of every type
+int delays_array[UNIT_TYPE_NUM]; // delays of units from every type
 
-trace_unit_cfg_t trace_unit_cfg;
+trace_unit_cfg_t trace_unit_cfg; // type and index of the unit to trace
 
-int num_fus;
-// current_cycle
-functional_unit_t ** fu_array_curr;
-register_struct_t reg_file_curr[REG_NUM];
-instruction_queue_t inst_queue_curr;
+int num_fus; // total number of FUs in our system
+// current_cycle - values will be read from this HW
+functional_unit_t ** fu_array_curr; // array of FUs from all the types
+register_struct_t reg_file_curr[REG_NUM]; // register file
+instruction_queue_t inst_queue_curr; // instruction queue
 
-// next_cycle
+// next_cycle - values will be written to this HW and later it will be sampled
+//				into current_cycle
 functional_unit_t ** fu_array_next;
 register_struct_t reg_file_next[REG_NUM];
 instruction_queue_t inst_queue_next;
@@ -36,9 +40,9 @@ int init_registers(register_struct_t * reg_array)
 {
 	for (int i = 0; i < REG_NUM; i++)
 	{
-		reg_array[i].value = float(i);
-		reg_array[i].is_ready = true;
-		reg_array[i].fu = NULL;
+		reg_array[i].value = float(i); // Set Fi = float(i)
+		reg_array[i].is_ready = true; // all registers start in ready state
+		reg_array[i].fu = NULL; // not waiting for any FU
 	}
 	return 1;
 }
@@ -48,7 +52,7 @@ int init_memory(const char * memin_path)
 	int row_num = 0;
 	FILE * mem_file = fopen(memin_path, "r");
 	if (mem_file)
-	{
+	{ // write line from memin to the memory
 		while (fscanf(mem_file, "%x", &memory[row_num]) == 1)
 		{
 			row_num++;
@@ -59,7 +63,7 @@ int init_memory(const char * memin_path)
 }
 
 op_code_t get_unit_type_num_from_unit_name(char * unit_name)
-{	
+{	// convert unit name as might appear in cfg.txt to opcodes
 	for (int i = 0; unit_name[i] != '\0'; i++)
 	{
 		unit_name[i] = tolower(unit_name[i]);
@@ -117,7 +121,7 @@ void parse_cfg_line(const char * cfg_name, char * cfg_val_str)
 	int cfg_val_num;
 	if (*cfg_val_str >= '0' && 
 		*cfg_val_str <= '9')
-	{
+	{ // for every case except traceunit, the cfg_value_str is actually a number
 		cfg_val_num = atoi(cfg_val_str);
 	}
 	if (strcmp(cfg_name, "add_nr_units") == 0)
@@ -172,7 +176,8 @@ void parse_cfg_line(const char * cfg_name, char * cfg_val_str)
 	{
 		char unit_num_str;
 		if (cfg_val_str)
-		{
+		{	// we assume a max of 10 units of any type, so the last character
+			// of cfg_val_str is the unit index
 			unit_num_str = cfg_val_str[strlen(cfg_val_str) - 1];
 		}
 		char * unit_name = strtok(cfg_val_str, "[0123456789]");
@@ -196,13 +201,18 @@ int init_arch_spec(const char * cfg_path)
 		do 
 		{
 			char nl = '\0';
+			// read next line from cfg_file
 			if (!fgets(line, MAX_LINE_LEN, cfg_file))
-			{
+			{ 
 				done = true;
 				break;
 			}
+			// remove every space from line
+			// now the line is either in the format of "cfg_name=cfg_val"
+			// or it was an empty line to begin with and will remain so 
 			strip_spaces(line);
 			char * cfg_name = strtok(line, "=");
+			// if the line is not empty
 			if (cfg_name)
 			{
 				char * cfg_val_str = strtok(NULL, "=");
@@ -221,6 +231,7 @@ int init_arch_spec(const char * cfg_path)
 
 int init_fu_arr(functional_unit ** fu_arr, int num_elements)
 {
+	// allocate memory for every FU
 	for (int i = 0; i < num_elements; i++)
 	{
 		fu_arr[i] = (functional_unit *)malloc(sizeof(functional_unit));		
@@ -232,6 +243,7 @@ bool is_trace(functional_unit * fu)
 {
 	return (fu->unit_type == trace_unit_cfg.unit_type && fu->unit_index == trace_unit_cfg.unit_num);
 }
+
 int init_fu(functional_unit * fu, op_code_t unit_type, int unit_index)
 {
 	fu->is_busy = false;
@@ -257,17 +269,18 @@ int init_fu(functional_unit * fu, op_code_t unit_type, int unit_index)
 int init_functional_units(functional_unit *** fu_arr)
 {
 	int total_num_fus = 0;
+	// count the total number of FUs needed
 	for (int i = 0; i < UNIT_TYPE_NUM; i++)
 	{
-		total_num_fus += nr_units_array[i];
+		total_num_fus += nr_units_array[i]; 
 	}
 	num_fus = total_num_fus;
+	// pointer to the array of pointers to FUs
 	*fu_arr = (functional_unit **)malloc(total_num_fus * sizeof(functional_unit *));
 	init_fu_arr(*fu_arr, total_num_fus);
-	//init_fu_arr(fu_array_next, total_num_fus);
 	int units_init_cnt = 0;
 	for (int unit_type = 0; unit_type < UNIT_TYPE_NUM; unit_type++)
-	{
+	{ // for every unit type, allocate the number of FUs needed according to nr_units_array
 		int num_fus_of_type = nr_units_array[unit_type];
 		for (int unit_num = 0; unit_num < num_fus_of_type; unit_num++)
 		{
@@ -280,7 +293,7 @@ int init_functional_units(functional_unit *** fu_arr)
 }
 
 int init_instruction_queue(instruction_queue_t * inst_q)
-{
+{ // initialize inst_q to be empty
 	inst_q->free_spots = INST_Q_LEN;
 	inst_q->read_ptr = 0;
 	inst_q->write_ptr = 0;
@@ -288,12 +301,13 @@ int init_instruction_queue(instruction_queue_t * inst_q)
 }
 
 void init_files(const char * memout_path, const char * regout_path, const char * traceinst_path, const char * traceunit_path)
-{
+{ // set the output file paths
 	memout_file_name = memout_path;
 	regout_file_name = regout_path;
 	traceinst_file_name = traceinst_path;
 	traceunit_file_name = traceunit_path;
-
+	// open and close file_traceunit because we write to it during execution and only append
+	// so we need to make sure it starts empty
 	FILE * file_traceunit = fopen(traceunit_file_name, "wb");
 	if (file_traceunit)
 	{
@@ -318,6 +332,7 @@ void init_traceinst()
 		}
 	}
 	num_insts = num_cmds;
+	// initialize an array with tracing information about every instruction
 	traceinst_arr = (traceinst_t *)malloc(sizeof(traceinst_t) * num_cmds);
 	for (int i = 0; i < num_cmds; i++)
 	{
@@ -333,7 +348,7 @@ void init_traceinst()
 }
 
 int init_func(const char * cfg_path, const char * memin_path, const char * memout_path, const char * regout_path, const char * traceinst_path, const char * traceunit_path)
-{
+{ // call all initialization functions
 	init_files(memout_path, regout_path, traceinst_path, traceunit_path);
 	init_registers(reg_file_curr);
 	init_registers(reg_file_next);
@@ -348,7 +363,7 @@ int init_func(const char * cfg_path, const char * memin_path, const char * memou
 }
 
 inst_struct_t decode_inst(unsigned int hex_inst, int pc)
-{
+{ // decode instruction according to the mapping given in the exercise description
 	inst_struct_t decoded_inst;
 	decoded_inst.immidiate	= hex_inst			& 0xFFF;
 	decoded_inst.src_reg_2	= (hex_inst >> 12)	& 0xF;
@@ -365,11 +380,13 @@ int fetch()
 	if (queue_is_free(&inst_queue_curr))
 	{ // there's a free spot in the queue so we can fetch
 		inst_struct_t inst = decode_inst(memory[program_counter], program_counter);
+		// if we read HALT instruction - turn on the flag and dont increment program_counter
 		if (inst.op_code == HALT)
 		{
 			is_halt = true;
 			return 0;
 		}
+		// otherwise add inst to the queue and advance program_counter
 		queue_push(&inst_queue_next, &inst);
 		program_counter++;
 	}
@@ -382,7 +399,7 @@ int fetch()
 
 
 void update_fu(int fu_num, inst_struct_t * curr_inst)
-{
+{ // Set Rj, Rk and reg_file_next according to the src and dest instructions given in curr_inst
 	if (curr_inst->op_code == ST)
 	{ // STORE
 		if (reg_file_curr[curr_inst->src_reg_2].is_ready)
@@ -436,6 +453,8 @@ int issue()
 		return 0;
 	}
 	inst_struct_t * curr_inst = queue_read(&inst_queue_curr, PEEK);
+	// check for every FU if it is not busy and has the matching type for curr_inst
+	// and if so - issue the instruction
 	for (int i = 0; i < num_fus; i++)
 	{
 		if (fu_array_curr[i]->unit_type == curr_inst->op_code &&
@@ -458,7 +477,8 @@ int issue()
 }
 
 void traceinst(int pc, trace_inst_phase_t phase)
-{
+{	// add tracing information for a certain phase to the instruction
+	// number pc
 	switch (phase)
 	{
 	case ISSUE: traceinst_arr[pc].issued = clock; break;
@@ -545,8 +565,11 @@ int read_operands()
 {
 	for (int i = 0; i < num_fus; i++)
 	{
+		// Check if FU is in ReadOperand stage
 		if (fu_array_curr[i]->is_busy && !fu_array_curr[i]->is_execute && !fu_array_curr[i]->is_writeback)
-		{ // this means our FU is in ReadOperand stage
+		{ 
+			// check if the FU is ready to read operands, and if so, read operands and
+			// move the instruction to execute phase
 			if (read_operands_for_fu(i))
 			{
 				fu_array_next[i]->Rj = false;
@@ -562,7 +585,7 @@ int read_operands()
 }
 
 float exec_op(float v1, float v2, int imm, op_code_t opcode)
-{
+{ // carry out the operation
 	switch (opcode)
 	{
 	case ADD: return v1 + v2;
@@ -583,12 +606,14 @@ int execute()
 {
 	for (int i = 0; i < num_fus; i++)
 	{
+		// fu_array_next is used instead of fu_array_curr because execution starts in the same
+		// cycle as the end of readoperands, so they actually happen serially!
 		if (fu_array_next[i]->is_execute)
 		{
-			fu_array_next[i]->time_left--;
+			fu_array_next[i]->time_left--; // decrease execution time counter
 			functional_unit_t * fu_curr = fu_array_curr[i];
 			if (fu_array_next[i]->time_left == 0)
-			{ // execution ended!
+			{ // execution ended! get the result of the operation and move to writeback
 				fu_array_next[i]->wb_val = exec_op(reg_file_curr[fu_curr->Fj].value, reg_file_curr[fu_curr->Fk].value, fu_curr->immediate, fu_curr->unit_type);
 				fu_array_next[i]->is_execute = false;
 				fu_array_next[i]->is_writeback = true;
@@ -677,7 +702,7 @@ int write_back()
 }
 
 int sample_state()
-{
+{ // copy all _next to _curr
 	for (int i = 0; i < num_fus; i++)
 	{
 		memcpy(fu_array_curr[i], fu_array_next[i], sizeof(*fu_array_curr[i]));
